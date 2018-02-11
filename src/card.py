@@ -1,54 +1,73 @@
-from SimpleCV import Image
-from SimpleCV.Features import HueHistogramFeatureExtractor
-from SimpleCV.Features import EdgeHistogramFeatureExtractor
 import numpy as np
 import cv2
+import os.path
+import urllib
+import requests
+import json
 
 
 class Card:
-	def __init__(self, img, histSize = 64):
-		self.img = img
-		self.histSize = histSize
+	def __init__(self, id):
+		self.id = id
 		
-	#def getcv2Histogram(self):
-		#hist = cv2.calcHist([img], [0, 1, 2], mask=NULL, 16,
-		#			[0, 180, 0, 256, 0, 256])
-		#hist = cv2.normalize(hist).flatten()
-		#return hist
-	
-	def getHistogram(self):
-		return self.img.histogram(self.histSize)
+		self._downloadImage()
+		self._getMetaData()
+		self.siftDesc = self._calcSiftDescriptors()
 		
-	def dct_hash(self):
-		img = self._float_version(self.img)
-		small_img = cv2.CreateImage((32, 32), 32, 1)
-		cv2.Resize(img[20:190, 20:205], small_img)
-
-		dct = cv2.CreateMat(32, 32, cv2.CV_32FC1)
-		cv2.DCT(small_img, dct, cv2.CV_DXT_FORWARD)
-		dct = dct[1:9, 1:9]
-
-		avg = cv2.Avg(dct)[0]
-		dct_bit = cv2.CreateImage((8,8),8,1)
-		cv2.CmpS(dct, avg, dct_bit, cv2.CV_CMP_GT)
-
-		return [dct_bit[y, x]==255.0
-				for y in xrange(8)
-				for x in xrange(8)]
-
-
-	def _float_version(self, img):
-		tmp = cv2.CreateImage( cv2.GetSize(img), 32, 1)
-		cv2.ConvertScale(img, tmp, 1/255.0)
-		return tmp
+	def getImage(self):
+		return cv2.imread(self._getImgFilename(), cv2.IMREAD_COLOR)
+		
+	def compare(self, desc):
+		try:
+			FLANN_INDEX_KDTREE = 0
+			index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+			search_params = dict(checks = 50)
+			flann = cv2.FlannBasedMatcher(index_params, search_params)
+			
+			# Find all descriptor matches
+			matches = flann.knnMatch(self.siftDesc,desc,k=2)
+			
+			# Count up 'good' matches
+			score = 0
+			for m,n in matches:
+				if m.distance < 0.7*n.distance:
+					#score = score + (m.distance/n.distance)
+					score = score + 1
+			return score
+		except:
+			return 0
+		
+	def getName(self):
+		try:
+			return self.metaData['name']
+		except:
+			return '???'
 	
-	def compare(self, card):
-		return self._chi2Distance(self.getHistogram(), card.getHistogram())
+	def getPriceUSD(self):
+		try:
+			return self.metaData['usd']
+		except:
+			return '0'
+		
+	def _getMetaData(self):
+		uriString = 'https://api.scryfall.com/cards/multiverse/'+str(self.id)
+		print 'Fetching :' + uriString
+		r = requests.get(uriString, auth=('Bearer','x'))
+		self.metaData = r.json()
 	
-	def _chi2Distance(self, histA, histB, eps = 1e-10):
-		# compute the chi-squared distance
-		d = 0.5 * np.sum([((a - b) ** 2) / (a + b + eps)
-			for (a, b) in zip(histA, histB)])
-
-		# return the chi-squared distance
-		return d
+	def _getImgFilename(self):
+		return "..\data\%d.png" % self.id
+		
+	def _downloadImage(self):
+		fn = self._getImgFilename()
+		if not os.path.isfile(fn):
+			print 'File "%s" not found. Loading from Gatherer...' % fn
+			url = "http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%d&type=card" % self.id
+			urllib.urlretrieve(url, fn)
+	
+	def _calcSiftDescriptors(self):
+		sift = cv2.xfeatures2d_SIFT.create()
+		# IMREAD_COLOR or IMREAD_GRAYSCALE
+		tmp, des = sift.detectAndCompute(cv2.imread(self._getImgFilename(), cv2.IMREAD_GRAYSCALE), None)
+		return des
+	
