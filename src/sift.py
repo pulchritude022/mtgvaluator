@@ -6,26 +6,16 @@ from card import Card
 import pickle
 
 def findAndDrawMatches(img1, img2):
-	sift = cv2.xfeatures2d_SIFT.create()
-	kp1, des1 = sift.detectAndCompute(img1, None)
-	kp2, des2 = sift.detectAndCompute(img2, None)
+	orb = cv2.ORB.create()
+	kp1, des1 = orb.detectAndCompute(img1, None)
+	kp2, des2 = orb.detectAndCompute(img2, None)
 
-
-	MIN_MATCH_COUNT = 10
-	FLANN_INDEX_KDTREE = 0
-	index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-	search_params = dict(checks = 50)
-
-	flann = cv2.FlannBasedMatcher(index_params, search_params)
-
-	matches = flann.knnMatch(des1,des2,k=2)
-
-	# store all the good matches as per Lowe's ratio test.
-	good = []
-	for m,n in matches:
-		if m.distance < 0.7*n.distance:
-			good.append(m)
-
+	bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True)
+	matches = bf.match(des1, des2)
+	matches = sorted(matches, key = lambda x:x.distance)
+	good = matches[:100]
+	
+	# Get bounding box
 	src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
 	dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
 
@@ -37,13 +27,15 @@ def findAndDrawMatches(img1, img2):
 	dst = cv2.perspectiveTransform(pts,M)
 
 	img2 = cv2.polylines(img2,[np.int32(dst)],True,255,3, cv2.LINE_AA)
-		
-	draw_params = dict(matchColor = (0,255,0), # draw matches in green color
-					   singlePointColor = None,
-					   matchesMask = matchesMask, # draw only inliers
-					   flags = 2)
 
-	img3 = cv2.drawMatches(img1,kp1,img2,kp2,good,None,**draw_params)
+	
+	
+	draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+						singlePointColor = None,
+						matchesMask = matchesMask,
+						flags = 2)
+	img3 = cv2.drawMatches(img1,kp1,img2,kp2,good,None, **draw_params)
+	#img3 = cv2.drawMatches(img1,kp1,img2,kp2,good,None,**draw_params)
 	#plt.imshow(img3, 'gray'),plt.show()
 	return img3
 
@@ -100,7 +92,7 @@ def main2():
 		414393,	# Murder
 	]
 	
-	SCORE_THRESH = 60
+	SCORE_THRESH = 25
 	CARD_DB_FILENAME = '..\data\carddb.pickle'
 	showMatches = False
 	
@@ -147,22 +139,21 @@ def main2():
 		ret, frame = cap.read()
 		cv2.imshow('capture',frame)
 		grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		sift = cv2.xfeatures2d_SIFT.create()
+		sift = cv2.ORB.create()
 		tmp, des = sift.detectAndCompute(grayFrame, None)
 		if des is None:
 			continue
 		
 		# Find highest scoring card in the database
 		card = None
-		score = 0
+		score = float('inf')
 		for id, c in carddb.iteritems():
 			s = c.compare(des)
-			if s > score:
+			if s < score:
 				score = s
 				card = c
-		
 		# Ensure it's a card we recognize
-		if (score > SCORE_THRESH):
+		if (score < SCORE_THRESH):
 			cv2.imshow('card', card.getImage())
 			if showMatches:
 				cv2.imshow('matches', findAndDrawMatches(card.getImage(), frame))
@@ -172,7 +163,7 @@ def main2():
 				prevcard = card
 				count = count + 1
 				total = total + float(card.getPriceUSD())
-				print 'Total: $%.02f (%d cards) %s @ $%s' % (total, count, card.getName(), card.getPriceUSD())
+				print 'Total: $%.02f (%d cards) %s @ $%s [%.02f]' % (total, count, card.getName(), card.getPriceUSD(), score)
 		
 		
 		#print time.time()-start

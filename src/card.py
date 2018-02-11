@@ -18,24 +18,21 @@ class Card:
 		return cv2.imread(self._getImgFilename(), cv2.IMREAD_COLOR)
 		
 	def compare(self, desc):
+	
+		MATCH_COUNT = 10
 		try:
-			FLANN_INDEX_KDTREE = 0
-			index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-			search_params = dict(checks = 50)
-			flann = cv2.FlannBasedMatcher(index_params, search_params)
-			
-			# Find all descriptor matches
-			matches = flann.knnMatch(self.siftDesc,desc,k=2)
-			
-			# Count up 'good' matches
-			score = 0
-			for m,n in matches:
-				if m.distance < 0.7*n.distance:
-					#score = score + (m.distance/n.distance)
-					score = score + 1
-			return score
+			bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True)
+			matches = bf.match(self.siftDesc, desc)
+			matches = sorted(matches, key = lambda x:x.distance)
+			if len(matches) > MATCH_COUNT:
+				sum = 0
+				for m in matches[:MATCH_COUNT]:
+					sum = sum + m.distance
+				return sum/MATCH_COUNT
+			else:
+				return float('inf')
 		except:
-			return 0
+			return float('inf')
 		
 	def getName(self):
 		try:
@@ -66,7 +63,7 @@ class Card:
 			urllib.urlretrieve(url, fn)
 	
 	def _calcSiftDescriptors(self):
-		sift = cv2.xfeatures2d_SIFT.create()
+		sift = cv2.ORB.create()
 		# IMREAD_COLOR or IMREAD_GRAYSCALE
 		tmp, des = sift.detectAndCompute(cv2.imread(self._getImgFilename(), cv2.IMREAD_GRAYSCALE), None)
 		return des
