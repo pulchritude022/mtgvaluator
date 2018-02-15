@@ -28,6 +28,7 @@ class Card:
 				sum = 0
 				for m in matches[:MATCH_COUNT]:
 					sum = sum + m.distance
+				#print self.getName(), sum/MATCH_COUNT
 				return sum/MATCH_COUNT
 			else:
 				return float('inf')
@@ -63,7 +64,7 @@ class Card:
 			urllib.urlretrieve(url, fn)
 	
 	def _calcSiftDescriptors(self):
-		sift = cv2.ORB.create()
+		sift = cv2.ORB.create(scaleFactor=1.05)
 		# IMREAD_COLOR or IMREAD_GRAYSCALE
 		tmp, des = sift.detectAndCompute(cv2.imread(self._getImgFilename(), cv2.IMREAD_GRAYSCALE), None)
 		return des

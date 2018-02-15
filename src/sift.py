@@ -92,7 +92,7 @@ def main2():
 		414393,	# Murder
 	]
 	
-	SCORE_THRESH = 25
+	SCORE_THRESH = 30
 	CARD_DB_FILENAME = '..\data\carddb.pickle'
 	showMatches = False
 	
@@ -139,7 +139,10 @@ def main2():
 		ret, frame = cap.read()
 		cv2.imshow('capture',frame)
 		grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		sift = cv2.ORB.create()
+		#print grayFrame.shape
+		grayFrame = cv2.resize(grayFrame, (0,0), fx=0.6, fy=0.6) 
+		#print grayFrame.shape
+		sift = cv2.ORB.create(scaleFactor=1.05)
 		tmp, des = sift.detectAndCompute(grayFrame, None)
 		if des is None:
 			continue
@@ -152,6 +155,7 @@ def main2():
 			if s < score:
 				score = s
 				card = c
+		#print score
 		# Ensure it's a card we recognize
 		if (score < SCORE_THRESH):
 			cv2.imshow('card', card.getImage())
