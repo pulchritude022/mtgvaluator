@@ -90,11 +90,70 @@ def main2():
 		407633,	# Scion Summoner
 		414460,	# Gnarlwood Dryad
 		414393,	# Murder
+		193531, # Survival Cache
+		170991, # Kor Cartpgrapher
+		259701, # Disentomb
+		370724, # Sengir Vampire
+		218077, # Thundering Tanadon
+		233065, # Death-Hood Cobra
+		423759, # Precise Strike
+		423746, # Embraal Gear-Smasher
+		423749, # Frontline Rebel
+		423744, # Chandra's Revolution
+		423745, # Destructive Tampering
+		423723, # Defiant Salvager
+		423721, # Cruel Finality
+		423725, # Fen Hauler
+		423737, # Resourceful Return
+		423718, # Aether Poisoner
+		423719, # Alley Strangler
+		423740, # Vengeful Rebel
+		423734, # Night Market Aeronaut
+		423727, # Fourth Bridge Prowler
+		423736, # Renegade's Gateway
+		423723, # Defiant Salvager
+		423697, # Bastion Inventer
+		423699, # Dispersal Technician
+		423701, # Hinterland Drake
+		423707, # Negate
+		423713, # Skyship Plunderer
+		423693, # Aether Swooper
+		423717, # Wind-Kin Raiders
+		423714, # Take into Custody
+		423711, # Shielded Aether Thief
+		423706, # Metallic Rebuke
+		423712, # Shipwreck Moray
+		423675, # Bastion Enforcer
+		423684, # Deft Dimissal
+		423681, # Dawnfeather Eagle
+		423677, # Caught in the Brights
+		423683, # Decommission
+		423687, # Ghirapur Osprey
+		423670, # Aether Inspector
+		423669, # Aeronaut Admiral
+		423673, # Alley Evasion
+		423674, # audacious Infiltrator 
+		413368, # Marked by Honor
+		383195, # Borderland Marauder
+		383223, # Dauntless River Marshal
+		383309, # Midnight Gaurd
+		383357, # Ranger's Guile
+		383438, # Will-Forged Golem
+		383372, # Scrapyard Mongerl
+		383374, # Selfless Cathar 
+		383230, # Encrust 
+		383259, # Goblin RoughRider
+		383246, # Foundry Street Denizen
+		383386, # Solemn Offering
+		383183, # Amphin Pathmage
+		383376, # Shadowcloak Vampire
+		383271, # Hunter's Ambush
+		3900, # Danan
 	]
 	
-	SCORE_THRESH = 30
+	SCORE_THRESH = 32
 	CARD_DB_FILENAME = '..\data\carddb.pickle'
-	showMatches = False
+	showMatches = True
 	
 	# Load from serialized dict
 	carddb = {}
@@ -134,20 +193,19 @@ def main2():
 				cv2.destroyWindow('matches')
 				showMatches = False
 	
-		start = time.time()
 		# Capture frame-by-frame
 		ret, frame = cap.read()
+		
 		cv2.imshow('capture',frame)
 		grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		#print grayFrame.shape
-		grayFrame = cv2.resize(grayFrame, (0,0), fx=0.6, fy=0.6) 
-		#print grayFrame.shape
+		grayFrame = cv2.resize(grayFrame, (0,0), fx=0.6, fy=0.6)
 		sift = cv2.ORB.create(scaleFactor=1.05)
 		tmp, des = sift.detectAndCompute(grayFrame, None)
 		if des is None:
 			continue
 		
 		# Find highest scoring card in the database
+		start = time.time()
 		card = None
 		score = float('inf')
 		for id, c in carddb.iteritems():
@@ -166,8 +224,9 @@ def main2():
 			if prevcard == None or card.id != prevcard.id:
 				prevcard = card
 				count = count + 1
-				total = total + float(card.getPriceUSD())
-				print 'Total: $%.02f (%d cards) %s @ $%s [%.02f]' % (total, count, card.getName(), card.getPriceUSD(), score)
+				price = round(float(card.getPriceUSD())/5., 2)
+				total = total + price
+				print 'Total: $%.02f (%d cards) %s @ $%s [%.02f]' % (total, count, card.getName(), price, score)
 		
 		
 		#print time.time()-start

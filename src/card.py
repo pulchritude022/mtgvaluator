@@ -19,7 +19,7 @@ class Card:
 		
 	def compare(self, desc):
 	
-		MATCH_COUNT = 10
+		MATCH_COUNT = 8
 		try:
 			bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True)
 			matches = bf.match(self.siftDesc, desc)
